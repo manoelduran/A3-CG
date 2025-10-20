@@ -1,0 +1,8 @@
+.venv
+venv
+__pycache__
+classifier/data/*
+!classifier/data/.gitkeep
+classifier/models/**/*.pkl
+classifier/runs/**/*
+!classifier/runs/.gitkeep

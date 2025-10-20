@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
     # Healthcheck para garantir que o mosquitto está pronto antes da API iniciar
     healthcheck:
-      test: [ "CMD-SHELL", "nc -z localhost 1883 || exit 1" ]
+      test: ["CMD-SHELL", "nc -z localhost 1883 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,6 +26,19 @@ services:
     environment:
       - MQTT_BROKER_HOST=mosquitto
       - MQTT_BROKER_PORT=1883
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    restart: always
+
+  classifier:
+    container_name: cocoa_classifier
+    build:
+      context: ./classifier
+
+    ports:
+      - "8100:8100"
+
     depends_on:
       mosquitto:
         condition: service_healthy

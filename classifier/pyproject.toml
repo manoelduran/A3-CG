@@ -1,0 +1,19 @@
+[project]
+name = "a3"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[all]>=0.117.1",
+    "joblib>=1.5.2",
+    "numpy>=2.3.3",
+    "opencv-python>=4.11.0.86",
+    "paho-mqtt>=2.1.0",
+    "python-multipart>=0.0.20",
+    "scikit-learn>=1.7.2",
+]
+
+
+[tool.ruff]
+select = ["I", "F"]
