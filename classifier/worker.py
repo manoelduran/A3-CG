@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -11,13 +12,15 @@ import shared_state
 from cocoa_classifier import predictor
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # MQTT Configuration
-MQTT_BROKER = "10.48.235.207"  # Change to your broker address
+MQTT_BROKER = os.getenv("MQTT_BROKER", "")  # Change to your broker address
+if not MQTT_BROKER:
+    raise RuntimeError("MQTT_BROKER environment variable not set")
+
 # MQTT_BROKER = "localhost"  # Change to your broker address
 MQTT_PORT = 1883
 MQTT_TOPIC = "image/transfer"  # Topic to subscribe to for image data
