@@ -68,7 +68,8 @@ def _binarize_to_foreground(image: np.ndarray) -> np.ndarray:
         255,
         cv2.THRESH_BINARY + cv2.THRESH_OTSU,
     )
-    return threshold if threshold.mean() > 127 else cv2.bitwise_not(threshold)
+
+    return threshold if threshold.mean() < 127 else cv2.bitwise_not(threshold)
 
 
 def _open_foreground(
@@ -122,21 +123,6 @@ def _apply_watershed_in_place(image: np.ndarray, markers: np.ndarray):
     cv2.watershed(image, markers)
 
 
-def _paint_mask_from_contours(
-    shape: tuple[int, int], contours: list[np.ndarray]
-) -> np.ndarray:
-    mask = np.zeros(shape, dtype=np.uint8)
-    if contours:
-        cv2.drawContours(
-            mask,
-            contours,
-            contourIdx=-1,
-            color=(255, 255, 255),
-            thickness=-1,
-        )
-    return mask
-
-
 def get_contours(image: MatLike, single_bean: bool) -> list[np.ndarray]:
     if single_bean:
         return segment_single_bean(
@@ -150,9 +136,11 @@ def get_contours(image: MatLike, single_bean: bool) -> list[np.ndarray]:
     return segment_beans(
         image,
         SegmentParams(
-            min_area=600,
-            max_area=2_000_000,
+            min_area=800,
+            max_area=25_000,
             open_ksize=5,
+            sure_bg_dilate=5,
+            distance_thresh=0.05,
         ),
     )
 
