@@ -34,7 +34,6 @@ A arquitetura permite processamento assíncrono de imagens através de mensageri
                                      ▼
                             ┌──────────────────────┐
                             │  Classifier Worker    │
-                            │    (Porta 8100)       │
                             └──────────────────────┘
                                      │
                                      ▼
