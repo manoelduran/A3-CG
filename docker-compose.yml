@@ -4,32 +4,16 @@ services:
     container_name: mosquitto
     ports:
       - "1883:1883"
-    # Adicionamos o mapeamento do arquivo de configuração
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
     restart: unless-stopped
-    # Healthcheck para garantir que o mosquitto está pronto antes da API iniciar
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost 1883 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  fastapi_receiver:
-    container_name: fastapi_receiver_app
-    build:
-      context: ./fastapi_app
-    ports:
-      - "8000:8000"
-    environment:
-      - MQTT_BROKER_HOST=mosquitto
-      - MQTT_BROKER_PORT=1883
-    depends_on:
-      mosquitto:
-        condition: service_healthy
-    restart: always
 
   classifier:
     container_name: cocoa_classifier

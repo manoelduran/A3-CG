@@ -4,9 +4,6 @@
 			"path": "classifier"
 		},
 		{
-			"path": "fastapi_app"
-		},
-		{
 			"path": "mosquitto"
 		},
 		{
