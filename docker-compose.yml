@@ -10,7 +10,7 @@ services:
       - ./mosquitto/log:/mosquitto/log
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 1883 || exit 1"]
+      test: [ "CMD-SHELL", "nc -z localhost 1883 || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,6 +22,9 @@ services:
 
     ports:
       - "8100:8100"
+
+    environment:
+      MQTT_BROKER: mosquitto
 
     depends_on:
       mosquitto:
