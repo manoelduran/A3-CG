@@ -7,7 +7,7 @@ from .helpers import convert_to_bgr, convert_to_lab, get_blurred_gray
 from .segment_params import SegmentParams
 
 
-def segment_beans(image: np.ndarray, params: SegmentParams, debug: bool = False) -> list[np.ndarray]:
+def segment_beans(image: np.ndarray, params: SegmentParams, debug: bool = True) -> list[np.ndarray]:
     """Return binary mask and list of contours for each bean after watershed splitting."""
     os.makedirs("steps", exist_ok=True)
     blur = _preprocess_to_gray(image)
@@ -152,11 +152,11 @@ def get_contours(image: MatLike, single_bean: bool) -> list[np.ndarray]:
     return segment_beans(
         image,
         SegmentParams(
-            min_area=800,
+            min_area=6000,
             max_area=25_000,
-            open_ksize=5,
-            sure_bg_dilate=5,
-            distance_thresh=0.05,
+            open_ksize=7,
+            sure_bg_dilate=3,
+            distance_thresh=0.3,
         ),
     )
 
