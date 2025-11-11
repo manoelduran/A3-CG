@@ -1,3 +1,4 @@
 steps
 data/*
 model/**/*.pkl
+model/**/*.json
