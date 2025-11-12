@@ -8,3 +8,5 @@ class SegmentParams:
     open_ksize: int = 7
     sure_bg_dilate: int = 3
     distance_thresh: float = 0.3
+    n_clusters: int = 3  # Number of clusters for K-means (background + bean colors)
+    cluster_selection_method: str = "size"  # "size" or "brightness" - how to select bean clusters

@@ -36,8 +36,8 @@ def load_training_samples(
 
             if not contours:
                 threshold = _find_threshold(image)
-                contours = _find_contours(threshold)
-                contours = [c for c in contours if 1000 <= cv2.contourArea(c) <= 100000]
+                contours, _ = _find_contours(threshold)
+                contours = [c for c in contours if len(c) >= 3 and 1000 <= cv2.contourArea(c) <= 100000]
 
             if contours:
                 contour = max(contours, key=cv2.contourArea)
@@ -72,10 +72,10 @@ def _find_threshold(image: np.ndarray) -> np.ndarray:
     return threshold
 
 
-def _find_contours(image: np.ndarray) -> MatLike:
-    _, contours = cv2.findContours(
+def _find_contours(image: np.ndarray) -> tuple:
+    contours, hierarchy = cv2.findContours(
         image,
         cv2.RETR_EXTERNAL,
         cv2.CHAIN_APPROX_SIMPLE,
     )
-    return contours
+    return contours, hierarchy
