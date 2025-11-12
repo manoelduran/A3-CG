@@ -1,10 +1,9 @@
 from typing import Any, TypedDict
-
 import cv2
 import numpy as np
 from cv2.typing import MatLike
-
-from .bean_segmenter import get_contours
+from .segment_params import SegmentParams
+from .bean_segmenter import segment_single_bean
 from .feature_contourer import contour_features
 
 
@@ -25,7 +24,7 @@ def predict(
     single_bean: bool = False,
 ):
     image = _decode_image(file)
-    contours = get_contours(image, single_bean)
+    contours = segment_single_bean(image, SegmentParams(min_area=1000, max_area=100000))
 
     results: list[PredictionResultRow] = []
     overlay = image.copy()

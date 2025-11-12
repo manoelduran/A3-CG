@@ -3,8 +3,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 from cv2.typing import MatLike
-
-from .bean_segmenter import get_contours
+from .bean_segmenter import segment_single_bean
+from .segment_params import SegmentParams
 from .feature_contourer import contour_features
 from .helpers import get_blurred_gray
 
@@ -32,12 +32,18 @@ def load_training_samples(
             if image is None:
                 continue
 
-            contours = get_contours(image, single_bean)
+            contours = segment_single_bean(
+                image, SegmentParams(min_area=1000, max_area=100000)
+            )
 
             if not contours:
                 threshold = _find_threshold(image)
                 contours, _ = _find_contours(threshold)
-                contours = [c for c in contours if len(c) >= 3 and 1000 <= cv2.contourArea(c) <= 100000]
+                contours = [
+                    c
+                    for c in contours
+                    if len(c) >= 3 and 1000 <= cv2.contourArea(c) <= 100000
+                ]
 
             if contours:
                 contour = max(contours, key=cv2.contourArea)
