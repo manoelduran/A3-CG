@@ -1,7 +1,7 @@
 from pathlib import Path
 import cv2
 import numpy as np
-from .bean_segmenter import segment_single_bean
+from .bean_segmenter import segment_beans
 from .segment_params import SegmentParams
 from .feature_contourer import contour_features
 from .helpers import get_blurred_gray
@@ -29,7 +29,7 @@ def load_training_samples(
             if image is None:
                 continue
 
-            contours = segment_single_bean(
+            contours = segment_beans(
                 image, SegmentParams(min_area=1000, max_area=100000)
             )
 

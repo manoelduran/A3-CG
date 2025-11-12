@@ -3,51 +3,52 @@ import numpy as np
 from .segment_params import SegmentParams
 
 
-def segment_single_bean(image: np.ndarray, params: SegmentParams) -> list[np.ndarray]:
+def segment_beans(image: np.ndarray, params: SegmentParams) -> list[np.ndarray]:
     """
-    Segmenta sementes com alto contraste de um fundo claro usando
-    Limiarização de Otsu.
-
-    Retorna uma lista de contornos válidos.
+    Segments high-contrast seeds from a light background using Otsu thresholding.
+    Returns a list of valid contours.
     """
+    gray = _convert_to_grayscale(image)
+    mask = _apply_otsu_threshold(gray)
+    cleaned_mask = _clean_mask(mask)
+    contours = _find_contours(cleaned_mask)
+    valid_contours = _filter_contours_by_area(contours, params)
+    
+    _save_debug_images(image, cleaned_mask, valid_contours)
+    
+    return valid_contours
 
-    # 1. Converter para Tons de Cinza
-    # Não precisamos de cor, apenas do contraste.
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # 2. Segmentação (Limiarização)
-    # Esta é a "mágica".
-    # THRESH_BINARY_INV: Inverte (fundo fica preto, sementes brancas).
-    # THRESH_OTSU: Encontra o valor de limiar ideal AUTOMATICAMENTE.
-    # Adeus, _select_bean_clusters() e suas regras mágicas!
+def _convert_to_grayscale(image: np.ndarray) -> np.ndarray:
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+
+def _apply_otsu_threshold(gray: np.ndarray) -> np.ndarray:
     _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    return mask
 
-    # 3. Limpeza (Opcional, mas recomendado)
-    # Remove pequenos ruídos brancos na máscara.
-    # Você já tinha isso (morphologyEx), é uma boa prática.
+
+def _clean_mask(mask: np.ndarray) -> np.ndarray:
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    mask_limpa = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    return cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
 
-    # 4. Encontrar Contornos (as "bordas" que você quer)
-    contours, _ = cv2.findContours(
-        mask_limpa, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
 
-    # 5. Filtrar contornos por área (como você já fazia)
-    valid_contours = [
+def _find_contours(mask: np.ndarray) -> list[np.ndarray]:
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    return list(contours)
+
+
+def _filter_contours_by_area(contours: list[np.ndarray], params: SegmentParams) -> list[np.ndarray]:
+    return [
         c for c in contours if params.min_area <= cv2.contourArea(c) <= params.max_area
     ]
 
-    print(f"Encontradas {len(valid_contours)} sementes.")
 
-    # ------ Para Debug (Desenhar as caixas) ------
+def _save_debug_images(image: np.ndarray, mask: np.ndarray, contours: list[np.ndarray]) -> None:
     debug_image = image.copy()
-    for c in valid_contours:
+    for c in contours:
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(debug_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-    cv2.imwrite("steps/0_resultado_simples.png", debug_image)
-    cv2.imwrite("steps/1_mascara_otsu.png", mask_limpa)
-    # ------ Fim do Debug ------
-
-    return valid_contours
+    
+    cv2.imwrite("steps/0_simple_result.png", debug_image)
+    cv2.imwrite("steps/1_otsu_mask.png", mask)

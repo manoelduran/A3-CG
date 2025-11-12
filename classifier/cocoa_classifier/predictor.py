@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from cv2.typing import MatLike
 from .segment_params import SegmentParams
-from .bean_segmenter import segment_single_bean
+from .bean_segmenter import segment_beans
 from .feature_contourer import contour_features
 
 
@@ -23,7 +23,7 @@ def predict(
     classes: list[str],
 ):
     image = _decode_image(file)
-    contours = segment_single_bean(image, SegmentParams(min_area=1000, max_area=100000))
+    contours = segment_beans(image, SegmentParams(min_area=1000, max_area=100000))
 
     results: list[PredictionResultRow] = []
     overlay = image.copy()
