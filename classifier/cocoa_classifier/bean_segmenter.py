@@ -13,9 +13,9 @@ def segment_beans(image: np.ndarray, params: SegmentParams) -> list[np.ndarray]:
     cleaned_mask = _clean_mask(mask)
     contours = _find_contours(cleaned_mask)
     valid_contours = _filter_contours_by_area(contours, params)
-    
-    _save_debug_images(image, cleaned_mask, valid_contours)
-    
+
+    _save_debug_images(gray, image, cleaned_mask, valid_contours)
+
     return valid_contours
 
 
@@ -38,17 +38,22 @@ def _find_contours(mask: np.ndarray) -> list[np.ndarray]:
     return list(contours)
 
 
-def _filter_contours_by_area(contours: list[np.ndarray], params: SegmentParams) -> list[np.ndarray]:
+def _filter_contours_by_area(
+    contours: list[np.ndarray], params: SegmentParams
+) -> list[np.ndarray]:
     return [
         c for c in contours if params.min_area <= cv2.contourArea(c) <= params.max_area
     ]
 
 
-def _save_debug_images(image: np.ndarray, mask: np.ndarray, contours: list[np.ndarray]) -> None:
+def _save_debug_images(
+    gray: np.ndarray, image: np.ndarray, mask: np.ndarray, contours: list[np.ndarray]
+) -> None:
     debug_image = image.copy()
     for c in contours:
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(debug_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    
-    cv2.imwrite("steps/0_simple_result.png", debug_image)
-    cv2.imwrite("steps/1_otsu_mask.png", mask)
+
+    cv2.imwrite("steps/0_grayscale.png", gray)
+    cv2.imwrite("steps/1_simple_result.png", debug_image)
+    cv2.imwrite("steps/2_otsu_mask.png", mask)
