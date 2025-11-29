@@ -60,40 +60,35 @@ O módulo `classifier` é o núcleo do sistema, responsável por todo o processa
 
 #### 3.1.1 `bean_segmenter.py` - Segmentação de Grãos
 
-Este módulo implementa algoritmos avançados de segmentação para identificar e isolar grãos individuais em imagens.
+Este módulo implementa um algoritmo simplificado e eficiente de segmentação para identificar e isolar grãos individuais em imagens.
 
-**Funcionalidades principais:**
+**Funcionalidade principal:**
 
-1. **Segmentação Multi-Grão (`segment_beans`)**:
+**Segmentação de Grãos (`segment_beans`)**:
 
-   - Utiliza o algoritmo **Watershed** para separar grãos que estão em contato
-   - Pré-processamento com normalização de contraste (CLAHE no espaço LAB)
-   - Binarização adaptativa usando Threshold de Otsu
-   - Operações morfológicas (opening, dilatação)
-   - Transformada de distância para identificar centros dos grãos
-   - Separação de regiões "sure foreground", "sure background" e "unknown"
-   - Aplicação do Watershed para separação final
+O algoritmo utiliza uma abordagem direta e robusta:
 
-2. **Segmentação de Grão Único (`segment_single_bean`)**:
-   - Algoritmo simplificado para imagens de treinamento
-   - Threshold simples com operações morfológicas
-   - Filtragem por área para remover ruídos
+1. **Conversão para Grayscale**: Simplifica a imagem para processamento
+2. **Binarização com Threshold de Otsu**: Separação automática entre foreground e background
+   - Threshold adaptativo baseado no histograma da imagem
+   - Inversão binária (THRESH_BINARY_INV) para grãos escuros em fundo claro
+3. **Limpeza Morfológica**: Operação de Opening com kernel elíptico (5x5)
+   - Remove ruídos pequenos
+   - Suaviza contornos
+4. **Extração de Contornos**: Detecta contornos externos (RETR_EXTERNAL)
+5. **Filtragem por Área**: Valida contornos dentro dos limites configurados
 
 **Parâmetros configuráveis (`SegmentParams`):**
 
-- `min_area`: Área mínima para considerar um contorno válido
-- `max_area`: Área máxima permitida
-- `open_ksize`: Tamanho do kernel para operação de opening morfológico
-- `sure_bg_dilate`: Tamanho da dilatação para background certo
-- `distance_thresh`: Threshold para transformada de distância
+- `min_area`: Área mínima para considerar um contorno válido (padrão: 10000 pixels)
+- `max_area`: Área máxima permitida (padrão: 2000000 pixels)
+- `open_ksize`: Tamanho do kernel para operação de opening morfológico (padrão: 7)
 
-**Algoritmo Watershed em detalhes:**
-O Watershed é particularmente eficaz para separar objetos em contato. O processo funciona assim:
-
-1. Identifica regiões que são definitivamente foreground (centros dos grãos)
-2. Identifica regiões que são definitivamente background
-3. Marca a região desconhecida entre elas
-4. Aplica o algoritmo Watershed que "inunda" a partir dos marcadores para criar divisões precisas
+**Debug:**
+O módulo salva automaticamente imagens intermediárias no diretório `steps/` para análise:
+- `0_grayscale.png`: Imagem em escala de cinza
+- `1_simple_result.png`: Resultado com bounding boxes dos grãos detectados
+- `2_otsu_mask.png`: Máscara binária após threshold de Otsu
 
 #### 3.1.2 `feature_contourer.py` - Extração de Características
 
@@ -123,12 +118,13 @@ Responsável por carregar e processar as imagens de treinamento.
 1. Percorre diretórios de classes (`good/`, `bad/`)
 2. Para cada imagem:
    - Decodifica a imagem
-   - Segmenta o grão (assumindo imagem de grão único)
-   - Extrai features do maior contorno encontrado
+   - Segmenta usando `segment_beans` (mesmo algoritmo usado na predição)
+   - Seleciona o maior contorno encontrado (assumindo imagem de grão único ou poucos grãos)
+   - Extrai features do contorno
    - Associa label da classe
 3. Retorna matriz de features e vetor de labels
 
-**Fallback:** Se a segmentação padrão falhar, utiliza threshold simples para encontrar contornos.
+**Tratamento de erros:** Imagens que não produzem contornos válidos são automaticamente ignoradas, evitando dados corrompidos no treinamento.
 
 #### 3.1.4 `trainer.py` - Treinamento do Modelo
 
@@ -179,9 +175,9 @@ Orquestra o processo completo de predição em imagens.
 
 Conjunto de funções utilitárias para conversão de espaços de cor e pré-processamento:
 
-- Conversão BGR ↔ LAB ↔ Grayscale
-- Aplicação de blur gaussiano
-- Normalização de contraste com CLAHE
+- Conversão entre espaços de cor: BGR ↔ LAB, BGR → Grayscale
+- Aplicação de blur gaussiano para suavização
+- Utilitário para criação de diretórios
 
 #### 3.1.7 `cli.py` - Interface de Linha de Comando
 
@@ -283,12 +279,11 @@ Imagem de Entrada
     ├─ Decodificação
     ↓
 [bean_segmenter.py]
-    ├─ Normalização de contraste (CLAHE)
-    ├─ Binarização (Otsu)
-    ├─ Operações morfológicas
-    ├─ Transformada de distância
-    ├─ Algoritmo Watershed
-    └─ Extração de contornos válidos
+    ├─ Conversão para Grayscale
+    ├─ Binarização (Threshold de Otsu)
+    ├─ Operação morfológica (Opening)
+    ├─ Extração de contornos externos
+    └─ Filtragem por área
     ↓
 Lista de Contornos (grãos individuais)
     ↓
@@ -300,12 +295,13 @@ Lista de Contornos (grãos individuais)
 Matriz de Features
     ↓
 Modelo SVM
+    ├─ Normalização (StandardScaler)
     ├─ Predição de classe
     └─ Probabilidades
     ↓
 Resultados:
     ├─ Imagem anotada (overlay)
-    └─ CSV com predições detalhadas
+    └─ Dados de predição (lista de resultados)
 ```
 
 ---
@@ -314,38 +310,36 @@ Resultados:
 
 ### 5.1 Algoritmos Implementados
 
-1. **CLAHE (Contrast Limited Adaptive Histogram Equalization)**
-
-   - Normalização adaptativa de contraste
-   - Aplicada no canal L do espaço LAB
-   - Melhora a robustez a variações de iluminação
-
-2. **Threshold de Otsu**
+1. **Threshold de Otsu**
 
    - Binarização adaptativa automática
-   - Seleciona threshold ótimo baseado em histograma
-   - Inversão automática se necessário
+   - Seleciona threshold ótimo baseado no histograma da imagem
+   - Inversão binária (THRESH_BINARY_INV) para grãos escuros em fundo claro
+   - Robusto a diferentes condições de iluminação
 
-3. **Operações Morfológicas**
+2. **Operações Morfológicas**
 
-   - Opening: Remove ruídos pequenos
-   - Dilatação: Expande regiões para criar marcadores
+   - Opening: Remove ruídos pequenos e suaviza contornos
+   - Utiliza kernel elíptico (5x5) para preservar formato dos grãos
+   - Aplicado após binarização para limpeza da máscara
 
-4. **Transformada de Distância**
+3. **Extração de Contornos**
 
-   - Calcula distância de cada pixel ao background mais próximo
-   - Identifica centros dos objetos (picos de distância)
+   - Algoritmo de detecção de contornos do OpenCV
+   - Modo RETR_EXTERNAL: detecta apenas contornos externos
+   - Aproximação CHAIN_APPROX_SIMPLE: comprime segmentos horizontais/verticais
 
-5. **Watershed**
+4. **Análise Geométrica e de Cor**
 
-   - Algoritmo de segmentação baseado em marcadores
-   - Separa objetos em contato efetivamente
-   - Fundamental para processar múltiplos grãos
+   - Cálculo de área, perímetro, aspect ratio, circularidade, solidez
+   - Ajuste de elipse para cálculo de excentricidade
+   - Extração de estatísticas de cor no espaço LAB perceptualmente uniforme
 
-6. **SVM (Support Vector Machine)**
+5. **SVM (Support Vector Machine)**
    - Classificador de aprendizado supervisionado
    - Kernel RBF para fronteiras não-lineares
-   - Probabilidades calibradas para confiança
+   - Probabilidades calibradas para estimativa de confiança
+   - Normalização com StandardScaler antes da predição
 
 ### 5.2 Espaços de Cor Utilizados
 
@@ -467,7 +461,7 @@ classifier/
 ├── shared_state.py          # Estado compartilhado
 ├── cocoa_classifier/
 │   ├── __init__.py
-│   ├── bean_segmenter.py    # Segmentação Watershed
+│   ├── bean_segmenter.py    # Segmentação com Otsu + morfologia
 │   ├── feature_contourer.py # Extração de features
 │   ├── data_loader.py       # Carregamento de dados
 │   ├── trainer.py           # Treinamento SVM
@@ -495,10 +489,11 @@ classifier/
 
 ### 10.1 Robustez
 
-- **Normalização de contraste**: CLAHE adapta-se a diferentes condições de iluminação
-- **Binarização adaptativa**: Otsu ajusta-se automaticamente ao histograma
-- **Validação cruzada**: Garante generalização do modelo
-- **Tratamento de erros**: Fallbacks para segmentação quando métodos principais falham
+- **Binarização adaptativa**: Threshold de Otsu ajusta-se automaticamente ao histograma da imagem
+- **Operações morfológicas**: Opening remove ruídos e artefatos de binarização
+- **Validação cruzada**: Garante generalização do modelo com StratifiedKFold
+- **Tratamento de erros**: Amostras inválidas são ignoradas durante treinamento
+- **Filtragem por área**: Elimina detecções espúrias muito pequenas ou grandes
 
 ### 10.2 Performance
 
@@ -518,29 +513,37 @@ classifier/
 
 ### 11.1 Limitações Atuais
 
-1. **Segmentação**: Pode ter dificuldades com grãos muito sobrepostos
-2. **Features**: Limitado a características geométricas e de cor básicas
-3. **Modelo**: SVM linear pode não capturar padrões complexos
+1. **Segmentação Simplificada**:
+   - Algoritmo baseado apenas em threshold de Otsu e morfologia básica
+   - Dificuldade com grãos sobrepostos ou em contato (não separa grãos tocando)
+   - Dependente de bom contraste entre grãos e fundo
+   - Pode falhar com iluminação não uniforme ou sombras fortes
+2. **Features**: Limitado a 12 características geométricas e de cor básicas
+3. **Modelo**: SVM com kernel RBF pode não capturar padrões visuais complexos
 4. **Dataset**: Relativamente pequeno (916 amostras)
 
 ### 11.2 Possíveis Melhorias
 
-1. **Deep Learning**: Substituir SVM por CNN para melhor precisão
-2. **Data Augmentation**: Aumentar dataset com transformações
-3. **Features avançadas**: Textura, histogramas de gradientes orientados
-4. **Segmentação**: U-Net ou Mask R-CNN para segmentação mais robusta
-5. **Calibração**: Melhorar estimativas de confiança
-6. **Interface Web**: Dashboard para visualização de resultados
-7. **Métricas**: Implementar recall, precision, F1-score detalhados
+1. **Segmentação Avançada**:
+   - Implementar algoritmo Watershed para separar grãos em contato
+   - Adicionar pré-processamento com CLAHE para robustez a iluminação
+   - Usar transformada de distância e marcadores para segmentação mais precisa
+   - Ou utilizar U-Net/Mask R-CNN para segmentação baseada em deep learning
+2. **Deep Learning**: Substituir SVM por CNN para melhor precisão e features aprendidas
+3. **Data Augmentation**: Aumentar dataset com transformações (rotação, zoom, ajustes de cor)
+4. **Features avançadas**: Textura (LBP, Haralick), histogramas de gradientes orientados (HOG)
+5. **Calibração**: Melhorar estimativas de confiança do modelo
+6. **Interface Web**: Dashboard para visualização de resultados e métricas em tempo real
+7. **Métricas detalhadas**: Implementar recall, precision, F1-score, matriz de confusão
 
 ---
 
 ## 12. Conclusão
 
-O projeto demonstra uma implementação completa e bem estruturada de um sistema de classificação de grãos de cacau utilizando técnicas modernas de visão computacional. O módulo `classifier` é particularmente robusto, utilizando algoritmos clássicos mas eficazes como Watershed para segmentação e SVM para classificação.
+O projeto demonstra uma implementação completa e bem estruturada de um sistema de classificação de grãos de cacau utilizando técnicas de visão computacional. O módulo `classifier` utiliza uma abordagem pragmática e eficiente, combinando algoritmos clássicos como Threshold de Otsu para segmentação e SVM para classificação.
 
-A arquitetura modular facilita manutenção e extensão, enquanto a integração MQTT permite uso em ambientes de produção. O código está bem organizado, com separação clara de responsabilidades e uso adequado de bibliotecas especializadas.
+A arquitetura modular facilita manutenção e extensão, enquanto a integração MQTT permite uso em ambientes de produção. O código está bem organizado, com separação clara de responsabilidades e uso adequado de bibliotecas especializadas (OpenCV, scikit-learn).
 
-O sistema está pronto para uso prático e pode servir como base para futuras melhorias, especialmente com a incorporação de técnicas de deep learning para aumentar ainda mais a precisão e robustez.
+O sistema atual prioriza simplicidade e eficiência, sendo adequado para cenários onde os grãos estão bem separados e com bom contraste. Para casos mais complexos (grãos em contato, iluminação variável), futuras melhorias podem incluir algoritmos de segmentação mais sofisticados (Watershed, deep learning) ou técnicas de pré-processamento mais robustas (CLAHE, normalização adaptativa).
 
 ---
